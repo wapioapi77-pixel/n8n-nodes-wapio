@@ -1,0 +1,21 @@
+{
+  "node": "n8n-nodes-wapio.wapioTrigger",
+  "nodeVersion": "1.0",
+  "codexVersion": "1.0",
+  "categories": [
+    "Communication",
+    "Marketing"
+  ],
+  "resources": {
+    "primaryDocumentation": [
+      {
+        "url": "https://www.wapio.io"
+      }
+    ],
+    "credentialDocumentation": [
+      {
+        "url": "https://www.wapio.io"
+      }
+    ]
+  }
+}

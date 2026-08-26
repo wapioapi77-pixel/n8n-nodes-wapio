@@ -1,0 +1,64 @@
+{
+  "name": "n8n-nodes-wapio",
+  "version": "0.1.0",
+  "description": "Official n8n community node package for Wapio WhatsApp API",
+  "license": "MIT",
+  "homepage": "https://www.wapio.io",
+  "author": {
+    "name": "Wapio",
+    "email": "contact@wapio.io",
+    "url": "https://www.wapio.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wapioapi77-pixel/n8n-nodes-wapio.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wapioapi77-pixel/n8n-nodes-wapio/issues"
+  },
+  "scripts": {
+    "build": "n8n-node build",
+    "dev": "n8n-node dev",
+    "lint": "n8n-node lint",
+    "lint:fix": "n8n-node lint --fix",
+    "test": "vitest run",
+    "release": "n8n-node release"
+  },
+  "files": [
+    "dist"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "strict": true,
+    "credentials": [
+      "dist/credentials/WapioApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/Wapio/Wapio.node.js",
+      "dist/nodes/WapioTrigger/WapioTrigger.node.js"
+    ]
+  },
+  "devDependencies": {
+    "@n8n/node-cli": "0.45.4",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "keywords": [
+    "n8n-community-node-package",
+    "n8n",
+    "wapio",
+    "whatsapp",
+    "whatsapp-api",
+    "baileys",
+    "automation",
+    "workflow",
+    "messaging",
+    "chatbot"
+  ]
+}

@@ -1,0 +1,8 @@
+credentials/
+nodes/
+tsconfig.json
+.prettierrc.js
+.eslintrc.js
+.git*
+.DS_Store
+*.tsbuildinfo
