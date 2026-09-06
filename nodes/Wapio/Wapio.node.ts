@@ -924,11 +924,7 @@ async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string)
 
     try {
         // Try unauthenticated first (for presigned S3/R2 URLs)
-        const downloaded = await this.helpers.httpRequest({
-            method: 'GET',
-            url: targetUrl,
-            encoding: 'arraybuffer',
-        });
+        const downloaded = await downloadUnauthenticatedMedia.call(this, targetUrl);
         if (Buffer.isBuffer(downloaded)) return downloaded;
         if (downloaded instanceof ArrayBuffer) return Buffer.from(downloaded);
         if (ArrayBuffer.isView(downloaded)) {
@@ -936,12 +932,9 @@ async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string)
         }
     } catch {
         // Fallback with Wapio Authorization header (for protected endpoints)
-        const creds = await this.getCredentials('wapioApi');
-        const token = (creds.personalAccessToken || creds.apiKey || creds.token) as string;
-        const downloaded = await this.helpers.httpRequest({
+        const downloaded = await this.helpers.httpRequestWithAuthentication.call(this, 'wapioApi', {
             method: 'GET',
             url: targetUrl,
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
             encoding: 'arraybuffer',
         });
         if (Buffer.isBuffer(downloaded)) return downloaded;
@@ -951,6 +944,17 @@ async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string)
         }
     }
     throw new NodeOperationError(this.getNode(), 'Could not download decrypted media from Wapio');
+}
+
+async function downloadUnauthenticatedMedia(
+    this: IExecuteFunctions,
+    targetUrl: string,
+): Promise<unknown> {
+    return await this.helpers.httpRequest({
+        method: 'GET',
+        url: targetUrl,
+        encoding: 'arraybuffer',
+    });
 }
 
 
