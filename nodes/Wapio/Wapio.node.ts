@@ -576,7 +576,7 @@ async function executeMessageOperation(
         public_url?: string;
       };
 
-      const downloadUrl = response.download_url ?? response.public_url;
+      const downloadUrl = response.download_url ?? response.public_url ?? response.publicUrl ?? response.data?.download_url ?? response.data?.publicUrl;
       if (!downloadUrl) throw new NodeOperationError(this.getNode(), 'Wapio did not return a decrypted media URL');
 
       const binaryBuffer = await downloadMediaBuffer.call(this, downloadUrl);
