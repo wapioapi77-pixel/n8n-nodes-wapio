@@ -561,23 +561,34 @@ async function executeMessageOperation(
       const binaryPropertyName = this.getNodeParameter('binaryPropertyName', itemIndex, 'data') as string;
       const payloadObj = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload;
 
-      const body: IDataObject = { ...payloadObj };
-      if (sessionId) body.session_id = sessionId;
+         let body: IDataObject = { ...payloadObj };
+    if (payloadObj.data) {
+        body = { data: payloadObj.data };
+    } else if (payloadObj.messages || payloadObj.message || payloadObj.audioMessage || payloadObj.imageMessage) {
+        body = { data: payloadObj };
+    }
+    if (sessionId) {
+        body.session_id = sessionId;
+    }
+    const response = (await wapioApiRequest.call(this, 'wapioApi', 'POST', '/v1/media/decrypt', {
+        body,
+        headers: sessionId ? { 'x-session-id': sessionId } : {},
+    })) as IDataObject;
 
-      const response = (await wapioApiRequest.call(
-        this,
-        'wapioApi',
-        'POST',
-        '/v1/media/decrypt',
-        { body, headers: sessionId ? { 'x-session-id': sessionId } : {} },
-      )) as {
-        success?: boolean;
-        download_url?: string;
-        public_url?: string;
-      };
+const dataObj = (response.data as IDataObject) || {};
+const downloadUrl = (
+    response.download_url ||
+    response.public_url ||
+    response.publicUrl ||
+    dataObj.download_url ||
+    dataObj.public_url ||
+    dataObj.publicUrl
+) as string | undefined;
 
-      const downloadUrl = response.download_url ?? response.public_url ?? response.publicUrl ?? response.data?.download_url ?? response.data?.publicUrl;
-      if (!downloadUrl) throw new NodeOperationError(this.getNode(), 'Wapio did not return a decrypted media URL');
+if (!downloadUrl) {
+    throw new NodeOperationError(this.getNode(), 'Wapio did not return a decrypted media URL');
+}
+
 
       const binaryBuffer = await downloadMediaBuffer.call(this, downloadUrl);
       const fileName = getDecryptFileName(payloadObj);
@@ -596,6 +607,8 @@ async function executeMessageOperation(
               fileName,
               mimeType,
               fileSize: binaryBuffer.length,
+              publicUrl: downloadUrl, 
+              downloadUrl: downloadUrl, 
             },
             binary: {
               [binaryPropertyName]: binaryData,
@@ -902,24 +915,44 @@ function isNodeExecutionDataResult(value: unknown): value is NodeExecutionDataRe
   );
 }
 
-async function downloadMediaBuffer(
-  this: IExecuteFunctions,
-  downloadUrl: string,
-): Promise<Buffer> {
-  const downloaded = await this.helpers.httpRequest({
-    method: 'GET',
-    url: downloadUrl,
-    encoding: 'arraybuffer',
-  });
+async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string): Promise<Buffer> {
+    // If relative path, prepend Wapio base URL
+    let targetUrl = downloadUrl;
+    if (targetUrl.startsWith('/')) {
+        targetUrl = 'https://api.wapio.io' + targetUrl;
+    }
 
-  if (Buffer.isBuffer(downloaded)) return downloaded;
-  if (downloaded instanceof ArrayBuffer) return Buffer.from(downloaded);
-  if (ArrayBuffer.isView(downloaded)) {
-    return Buffer.from(downloaded.buffer, downloaded.byteOffset, downloaded.byteLength);
-  }
-
-  throw new NodeOperationError(this.getNode(), 'Could not download decrypted media as binary data');
+    try {
+        // Try unauthenticated first (for presigned S3/R2 URLs)
+        const downloaded = await this.helpers.httpRequest({
+            method: 'GET',
+            url: targetUrl,
+            encoding: 'arraybuffer',
+        });
+        if (Buffer.isBuffer(downloaded)) return downloaded;
+        if (downloaded instanceof ArrayBuffer) return Buffer.from(downloaded);
+        if (ArrayBuffer.isView(downloaded)) {
+            return Buffer.from(downloaded.buffer, downloaded.byteOffset, downloaded.byteLength);
+        }
+    } catch {
+        // Fallback with Wapio Authorization header (for protected endpoints)
+        const creds = await this.getCredentials('wapioApi');
+        const token = (creds.personalAccessToken || creds.apiKey || creds.token) as string;
+        const downloaded = await this.helpers.httpRequest({
+            method: 'GET',
+            url: targetUrl,
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            encoding: 'arraybuffer',
+        });
+        if (Buffer.isBuffer(downloaded)) return downloaded;
+        if (downloaded instanceof ArrayBuffer) return Buffer.from(downloaded);
+        if (ArrayBuffer.isView(downloaded)) {
+            return Buffer.from(downloaded.buffer, downloaded.byteOffset, downloaded.byteLength);
+        }
+    }
+    throw new NodeOperationError(this.getNode(), 'Could not download decrypted media from Wapio');
 }
+
 
 function getDecryptFileName(payload: IDataObject): string {
   const content = payload.content as IDataObject | undefined;
