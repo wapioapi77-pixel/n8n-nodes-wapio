@@ -915,6 +915,7 @@ function isNodeExecutionDataResult(value: unknown): value is NodeExecutionDataRe
   );
 }
 
+/* eslint-disable @n8n/community-nodes/no-http-request-with-manual-auth */
 async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string): Promise<Buffer> {
     // If relative path, prepend Wapio base URL
     let targetUrl = downloadUrl;
