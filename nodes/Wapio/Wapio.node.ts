@@ -915,7 +915,6 @@ function isNodeExecutionDataResult(value: unknown): value is NodeExecutionDataRe
   );
 }
 
-/* eslint-disable @n8n/community-nodes/no-http-request-with-manual-auth */
 async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string): Promise<Buffer> {
     // If relative path, prepend Wapio base URL
     let targetUrl = downloadUrl;
@@ -924,8 +923,7 @@ async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string)
     }
 
     try {
-        // Try unauthenticated first (for presigned S3/R2 URLs)
-        const downloaded = await this.helpers.httpRequest({
+        const downloaded = await this.helpers.httpRequestWithAuthentication.call(this, 'wapioApi', {
             method: 'GET',
             url: targetUrl,
             encoding: 'arraybuffer',
@@ -936,13 +934,9 @@ async function downloadMediaBuffer(this: IExecuteFunctions, downloadUrl: string)
             return Buffer.from(downloaded.buffer, downloaded.byteOffset, downloaded.byteLength);
         }
     } catch {
-        // Fallback with Wapio Authorization header (for protected endpoints)
-        const creds = await this.getCredentials('wapioApi');
-        const token = (creds.personalAccessToken || creds.apiKey || creds.token) as string;
-        const downloaded = await this.helpers.httpRequest({
+        const downloaded = await this.helpers.httpRequestWithAuthentication.call(this, 'wapioApi', {
             method: 'GET',
             url: targetUrl,
-            headers: token ? { Authorization: `Bearer ${token}` } : {},
             encoding: 'arraybuffer',
         });
         if (Buffer.isBuffer(downloaded)) return downloaded;
